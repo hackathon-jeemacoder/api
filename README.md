@@ -1,5 +1,3 @@
-reademe
-
 # API de Gestion d'Utilisateurs et d'Articles
 
 ## Description
