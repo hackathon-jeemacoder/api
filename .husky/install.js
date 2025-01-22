@@ -2,5 +2,6 @@
 if (process.env.APP_ENV === 'production' || process.env.CI === 'true') {
   process.exit(0);
 }
-const husky = (await import('husky')).default;
+
+const husky = require('husky');
 console.log(husky());
