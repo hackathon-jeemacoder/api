@@ -2,35 +2,49 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('../models/user.model');
 
+// Fonction d'inscription
 exports.register = async (req, res) => {
   try {
     const { firstName, lastName, email, password } = req.body;
 
-    // Validate user input
+    // Validation des champs requis
     if (!firstName || !lastName || !email || !password) {
-      return res.status(400).json({ message: 'All fields are required' });
+      return res.status(400).json({ message: 'Tous les champs sont requis.' });
     }
 
-    // Check if user already exists
+    // Validation de l'email (format)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: 'Format de email invalide.' });
+    }
+
+    // Validation du mot de passe (longueur et complexité)
+    if (password.length < 8) {
+      return res
+        .status(400)
+        .json({ message: 'Le mot de passe doit contenir au moins 8 caractères.' });
+    }
+
+    // Vérifier si l'utilisateur existe déjà
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ message: 'Un utilisateur avec cet email existe déjà.' });
     }
 
-    // Hash the password
+    // Hachage du mot de passe
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create a new user
+    // Création d'un nouvel utilisateur
     const newUser = new User({ firstName, lastName, email, password: hashedPassword });
     await newUser.save();
 
-    // Generate a JWT token
+    // Génération du token JWT
     const token = jwt.sign({ userId: newUser._id, role: newUser.role }, process.env.JWT_SECRET, {
       expiresIn: '1h',
     });
 
     res.status(201).json({
-      message: 'User created successfully',
+      message: 'Utilisateur créé avec succès.',
       token,
       user: {
         id: newUser._id,
@@ -41,11 +55,12 @@ exports.register = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    console.error('Erreur lors de linscription :', error);
+    res.status(500).json({ message: 'Erreur interne du serveur.' });
   }
 };
 
+// Fonction de connexion
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -55,16 +70,22 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: 'Tous les champs sont requis.' });
     }
 
+    // Validation de l'email (format)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: 'Format de email invalide.' });
+    }
+
     // Vérifier si l'utilisateur existe
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ message: 'Identifiants invalides.' });
+      return res.status(401).json({ message: 'Email ou mot de passe incorrect.' });
     }
 
     // Vérifier si le mot de passe est correct
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
     if (!isPasswordCorrect) {
-      return res.status(401).json({ message: 'Identifiants invalides.' });
+      return res.status(401).json({ message: 'Email ou mot de passe incorrect.' });
     }
 
     // Générer un token JWT
@@ -72,7 +93,7 @@ exports.login = async (req, res) => {
       expiresIn: '1h',
     });
 
-    // Réponse avec succès
+    // Réponse en cas de succès
     res.status(200).json({
       message: 'Connexion réussie.',
       token,
